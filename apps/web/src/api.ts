@@ -1,10 +1,13 @@
 import axios from "axios";
 
+// Flask API (Dashboard, Listings, Requests, Orders). In dev, proxy forwards /flask-api → Flask :5002.
 const baseURL =
-  import.meta.env.VITE_API_URL || "/api";
+  import.meta.env.VITE_FLASK_API_URL != null
+    ? String(import.meta.env.VITE_FLASK_API_URL).replace(/\/api\/?$/, "") + "/api"
+    : "/flask-api";
 
 export const api = axios.create({
-  baseURL: baseURL.replace(/\/api\/?$/, "") + "/api",
+  baseURL,
   headers: { "Content-Type": "application/json" },
 });
 
