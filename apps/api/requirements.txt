@@ -5,3 +5,7 @@ uvicorn>=0.32
 motor>=3.3
 pydantic>=2.0
 pymongo>=2.0
+
+# Data / scripts (not needed to run the API server)
+pandas>=2.0
+requests>=2.31
