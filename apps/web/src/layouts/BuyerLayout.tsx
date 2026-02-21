@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
-import { ShoppingBag, Leaf, ListOrdered } from "lucide-react";
+import { ShoppingBag, Leaf, ListOrdered, Map } from "lucide-react";
 
 export function BuyerLayout() {
   return (
@@ -18,6 +18,12 @@ export function BuyerLayout() {
               className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-800 flex items-center gap-2"
             >
               <ShoppingBag size={18} /> Marketplace
+            </Link>
+            <Link
+              to="/map"
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-800 flex items-center gap-2"
+            >
+              <Map size={18} /> Map
             </Link>
             <Link
               to="/orders"

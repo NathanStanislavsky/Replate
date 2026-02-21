@@ -1,0 +1,31 @@
+"""
+MongoDB connection via Motor (async).
+Used by FastAPI dependency get_db(). Create 2dsphere index on startup in main.py.
+"""
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+
+MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "replate")
+
+client: AsyncIOMotorClient | None = None
+
+
+def get_client() -> AsyncIOMotorClient:
+    global client
+    if client is None:
+        client = AsyncIOMotorClient(MONGODB_URI)
+    return client
+
+
+def get_db():
+    return get_client()[DB_NAME]
+
+
+async def ensure_indexes(db):
+    """Create indexes for map and filters."""
+    await db.listings.create_index([("location", "2dsphere")])
+    await db.listings.create_index([("status", 1), ("pickup_start", 1), ("pickup_end", 1)])
+    await db.listings.create_index([("status", 1), ("price_cents", 1)])
+    await db.listings.create_index([("status", 1), ("category", 1)])
+    await db.businesses.create_index([("business_code", 1)], unique=True)

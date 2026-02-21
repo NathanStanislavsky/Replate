@@ -1,4 +1,6 @@
-# Replate API (Flask)
+# Replate API
+
+Two entry points: **FastAPI** (MongoDB, Boston map) and **Flask** (SQLite, business/allocations).
 
 ## Setup
 
@@ -10,17 +12,34 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+Set `MONGODB_URI` and `DB_NAME` in `.env` for the map API.
+
 ## Run
 
+**FastAPI (MongoDB – for map + reserve):**
 ```bash
-flask run --port 5001
-# API at http://127.0.0.1:5001 (5000 often used by macOS AirPlay)
+uvicorn main:app --reload --port 5001
+# API at http://127.0.0.1:5001 — GET /api/market (optional bounds), POST /listings, POST /listings/:id/reserve, POST /pickup/scan
 ```
 
-Dev seed: on first run, a buyer user (id=1) and business user (id=2, "Boston Beanery") are created if the DB is empty.
+**Flask (SQLite – for business dashboard):**
+```bash
+flask run --port 5002
+# API at http://127.0.0.1:5002
+```
+
+Dev seed (Flask): on first run, buyer id=1 and business "Boston Beanery" id=2 are created if the DB is empty.
 
 ## Endpoints
 
+**FastAPI (main.py):**
+- `GET /api/market?sw_lat=&sw_lng=&ne_lat=&ne_lng=` – open listings (optional bounds for map)
+- `POST /api/listings` – create listing (body: business_id, business_name, title, price_cents, qty_available, address?; geocode if address)
+- `GET /api/listings/:id` – one listing
+- `POST /api/listings/:id/reserve` – reserve one (body: user_name); atomic decrement
+- `POST /api/pickup/scan` – mark picked up (body: qr_token)
+
+**Flask (app/):**
 - `GET /api/market` – list available listings (buyer)
 - `GET /api/listings?business_id=2` – business listings
 - `POST /api/listings` – create listing (body: business_id, item_name, total_qty, public_qty, standard_price, …)

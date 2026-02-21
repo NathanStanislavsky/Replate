@@ -32,6 +32,12 @@ export function BusinessLayout() {
               <ListOrdered size={18} /> Requests
             </Link>
             <Link
+              to="/business/login"
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700"
+            >
+              Map business (login)
+            </Link>
+            <Link
               to="/"
               className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-700"
             >
