@@ -2,9 +2,11 @@
  * Detail + reserve for one listing (FastAPI/MongoDB market). ID is string (MongoDB ObjectId).
  */
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { getListingById, reserveListing } from "../../api/market";
 import type { MarketListing } from "../../api/market";
+
+const BUYER_NAME_KEY = "replate_buyer_name";
 
 export function MarketListingDetail() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +33,7 @@ export function MarketListingDetail() {
     setError(null);
     reserveListing(id, userName.trim())
       .then((order) => {
+        localStorage.setItem(BUYER_NAME_KEY, userName.trim());
         setSuccess(`Reserved! Show this code at pickup: ${order.qr_token.slice(0, 8)}…`);
       })
       .catch((e) =>
@@ -60,6 +63,11 @@ export function MarketListingDetail() {
           {success ? (
             <div className="mt-6 p-4 bg-emerald-50 text-emerald-800 rounded-xl">
               {success}
+              <div className="mt-2">
+                <Link to="/orders" className="font-medium underline">
+                  View my orders
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleReserve} className="mt-6 space-y-4">

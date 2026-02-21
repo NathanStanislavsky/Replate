@@ -1,11 +1,12 @@
 """
 Orders: atomic reserve, idempotent pickup scan, cancel + restock.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from bson import ObjectId
 from datetime import datetime
 from pymongo import ReturnDocument
 import secrets
+from typing import Optional
 
 from database import get_db
 from schemas import ReserveBody, PickupScanBody, OrderResponse, PickupScanResponse
@@ -20,6 +21,26 @@ def _order_to_response(doc: dict) -> dict:
         if k in doc and isinstance(doc[k], ObjectId):
             doc[k] = str(doc[k])
     return doc
+
+
+@router.get("/orders", response_model=list[OrderResponse])
+async def buyer_orders(
+    user_name: str = Query(..., min_length=1),
+    status: Optional[str] = Query(None),
+    db=Depends(get_db),
+):
+    """Buyer order history by user_name. Optional ?status=reserved|picked_up|canceled."""
+    user = user_name.strip()
+    if not user:
+        raise HTTPException(status_code=400, detail="user_name is required")
+    filter: dict = {"user_name": user}
+    if status:
+        filter["status"] = status
+    cursor = db.orders.find(filter).sort("created_at", -1)
+    out = []
+    async for doc in cursor:
+        out.append(_order_to_response(doc))
+    return out
 
 
 @router.post("/listings/{listing_id}/reserve", response_model=OrderResponse)

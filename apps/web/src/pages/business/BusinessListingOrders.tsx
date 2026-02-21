@@ -2,7 +2,7 @@
  * Orders for one listing (FastAPI/Mongo). Requires business login.
  */
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { getStoredBusinessId, businessListingOrders } from "../../api/business";
 import type { BusinessOrder } from "../../api/business";
 

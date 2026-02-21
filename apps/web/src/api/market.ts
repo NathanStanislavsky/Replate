@@ -34,6 +34,18 @@ export type MarketListing = {
   created_at?: string | null;
 };
 
+export type MarketOrder = {
+  id: string;
+  listing_id: string;
+  business_id?: string | null;
+  user_name: string;
+  status: string;
+  qr_token: string;
+  created_at?: string | null;
+  picked_up_at?: string | null;
+  canceled_at?: string | null;
+};
+
 export type Bounds = {
   sw_lat: number;
   sw_lng: number;
@@ -80,6 +92,16 @@ export async function reserveListing(
 ): Promise<{ id: string; qr_token: string; status: string }> {
   const { data } = await marketApi.post(`/listings/${listingId}/reserve`, {
     user_name,
+  });
+  return data;
+}
+
+export async function getBuyerOrders(
+  user_name: string,
+  status?: string
+): Promise<MarketOrder[]> {
+  const { data } = await marketApi.get<MarketOrder[]>("/orders", {
+    params: status ? { user_name, status } : { user_name },
   });
   return data;
 }

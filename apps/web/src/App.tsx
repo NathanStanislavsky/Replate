@@ -3,6 +3,7 @@ import { BuyerLayout } from "./layouts/BuyerLayout";
 import { BusinessLayout } from "./layouts/BusinessLayout";
 import { MarketplaceMap } from "./pages/buyer/MarketplaceMap";
 import { MarketListingDetail } from "./pages/buyer/MarketListingDetail";
+import { MyOrders } from "./pages/buyer/MyOrders";
 import { BusinessLogin } from "./pages/business/BusinessLogin";
 import { BusinessListingsMongo } from "./pages/business/BusinessListingsMongo";
 import { BusinessListingOrders } from "./pages/business/BusinessListingOrders";
@@ -14,7 +15,7 @@ export default function App() {
         <Route path="/" element={<MarketplaceMap />} />
         <Route path="/map" element={<MarketplaceMap />} />
         <Route path="/listing/m/:id" element={<MarketListingDetail />} />
-        <Route path="/orders" element={<Navigate to="/map" replace />} />
+        <Route path="/orders" element={<MyOrders />} />
         <Route path="/listing/:id" element={<Navigate to="/map" replace />} />
       </Route>
       <Route path="/business" element={<BusinessLayout />}>
