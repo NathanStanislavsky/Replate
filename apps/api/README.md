@@ -1,6 +1,6 @@
 # Replate API
 
-Two entry points: **FastAPI** (MongoDB, Boston map) and **Flask** (SQLite, business/allocations).
+Two entry points: **FastAPI** (MongoDB, Boston map) and **Flask** (PostgreSQL on Neon, business/allocations).
 
 ## Setup
 
@@ -12,7 +12,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Set `MONGODB_URI` and `DB_NAME` in `.env` for the map API.
+Set `MONGODB_URI` and `DB_NAME` in `.env` for the map API. Set `DATABASE_URL` to your Neon PostgreSQL connection string for the Flask app.
 
 ## Run
 
@@ -22,7 +22,7 @@ uvicorn main:app --reload --port 5001
 # API at http://127.0.0.1:5001 — GET /api/market (optional bounds), POST /listings, POST /listings/:id/reserve, POST /pickup/scan
 ```
 
-**Flask (SQLite – for business dashboard):**
+**Flask (PostgreSQL/Neon – for business dashboard):**
 ```bash
 flask run --port 5002
 # API at http://127.0.0.1:5002

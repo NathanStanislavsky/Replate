@@ -15,8 +15,9 @@ For anyone joining the project: this file explains **what we’re building**, **
 
 ## How to run
 
-1. **MongoDB** – You need a running MongoDB (local or Atlas). Set `MONGODB_URI` and `DB_NAME` in `apps/api/.env` (see `apps/api/.env.example`).
-2. **API (FastAPI + MongoDB)** – For the map and new market:
+1. **MongoDB** – You need a running MongoDB (local or Atlas). Env var: **`MONGODB_URI`** (and `DB_NAME`) in `apps/api/.env` (see `apps/api/.env.example`).
+2. **PostgreSQL (Neon)** – The Flask app uses PostgreSQL hosted on [Neon](https://neon.tech). Env var: **`DATABASE_URL`**. Create a project, then set it in `apps/api/.env` to your Neon connection string (see `apps/api/.env.example`).
+3. **API (FastAPI + MongoDB)** – For the map and new market:
    ```bash
    cd apps/api
    source .venv/bin/activate   # or .venv\Scripts\activate on Windows
@@ -24,7 +25,7 @@ For anyone joining the project: this file explains **what we’re building**, **
    uvicorn main:app --reload --port 5001
    ```
    - Optional: the old **Flask** API (listings/requests/allocations) still lives under `app/`; run with `flask run --port 5002` if you need it.
-3. **Web**
+4. **Web**
    ```bash
    npm install && npm run dev --workspace=web
    ```
@@ -48,7 +49,7 @@ rePlate/
 │   │   │   └── orders.py      ← POST /api/listings/:id/reserve, POST /api/pickup/scan
 │   │   ├── services/
 │   │   │   └── geocode.py     ← Geocode address once (Nominatim) when creating a listing
-│   │   └── app/               ← Old Flask app (SQLite, requests/allocations). Still used by business UI.
+│   │   └── app/               ← Old Flask app (PostgreSQL/Neon, requests/allocations). Still used by business UI.
 │   └── web/                   ← Frontend (Vite + React + TypeScript)
 │       └── src/
 │           ├── api.ts         ← Client for Flask API (market, orders, business)
@@ -68,7 +69,7 @@ rePlate/
 
 ## Two backends (why)
 
-- **Flask (apps/api/app/)** – Original: SQLite, listings/requests/allocations, business dashboard, “run allocation” lottery. Still used by **Marketplace** (list), **business** pages, **Orders**.
+- **Flask (apps/api/app/)** – Original: PostgreSQL (Neon), listings/requests/allocations, business dashboard, “run allocation” lottery. Still used by **Marketplace** (list), **business** pages, **Orders**.
 - **FastAPI (apps/api/main.py + routers/)** – New: MongoDB, GeoJSON locations, **GET /api/market** with optional bounds (`sw_lat`, `sw_lng`, `ne_lat`, `ne_lng`) for the map. Used by **Map** page and **reserve** flow. Geocoding (Nominatim) runs once when you create a listing with an address.
 
 So: **list + business flows** = Flask; **Boston map + reserve** = FastAPI + MongoDB.
@@ -88,3 +89,4 @@ So: **list + business flows** = Flask; **Boston map + reserve** = FastAPI + Mong
 - **Boston map (FastAPI + MongoDB)** – Added FastAPI app in `main.py`, Motor DB, `listings` + `orders` collections, 2dsphere index, GET /api/market with bounds, POST /listings, POST /listings/:id/reserve, POST /pickup/scan. Geocode-on-save (Nominatim) in `services/geocode.py`. Frontend: Leaflet map (`BostonMap`), `MarketplaceMap` page, `MarketListingDetail`, `api/market.ts`. New nav link “Map”.
 - **journal.md** – This file added so the team can onboard and follow changes.
 - **Post-V1 hardening & business & map filters** – Atomic reserve (`findOneAndUpdate`, then set `sold_out` if qty 0). Idempotent pickup (200 with `already_picked_up`). POST /orders/:id/cancel (restock). Order schema: `picked_up_at`, `canceled_at`, `no_show_at`, `cancel_reason`, `business_id`. Businesses collection + GET /business/lookup?business_code=; seed DEMO. Business routes: GET/POST /business/listings, PATCH /business/listings/:id, GET /business/listings/:id/orders, GET /business/orders (X-Business-Id). Market filters: open_now, min/max_price_cents, category; indexes. Frontend: Business login (business_code → store business_id), /business/m/listings, /business/m/listings/:id/orders; map filters UI (open now, price range, category). See `docs/POST_V1_NEXT_STEPS.md`.
+- **SQLite → PostgreSQL (Neon)** – Flask app now uses PostgreSQL hosted on Neon. Set `DATABASE_URL` in `apps/api/.env` to your Neon connection string. Added `psycopg2-binary`; config normalizes `postgres://` to `postgresql://` for compatibility. Existing SQLAlchemy models work unchanged; run the app once against Neon to create tables (and seed users if empty).
