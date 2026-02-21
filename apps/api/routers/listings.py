@@ -1,9 +1,11 @@
 """
 Listings: POST (create), GET /market with optional bounds and filters (open_now, price, category).
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
-from bson import ObjectId
 from datetime import datetime
+from typing import Optional
+
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from database import get_db
 from schemas import ListingCreate, ListingResponse, GeoPoint
@@ -22,14 +24,14 @@ def _listing_to_response(doc: dict) -> dict:
 
 @router.get("/market", response_model=list[ListingResponse])
 async def get_market(
-    sw_lat: float | None = Query(None),
-    sw_lng: float | None = Query(None),
-    ne_lat: float | None = Query(None),
-    ne_lng: float | None = Query(None),
-    open_now: bool | None = Query(None),
-    min_price_cents: int | None = Query(None),
-    max_price_cents: int | None = Query(None),
-    category: str | None = Query(None),
+    sw_lat: Optional[float] = Query(None),
+    sw_lng: Optional[float] = Query(None),
+    ne_lat: Optional[float] = Query(None),
+    ne_lng: Optional[float] = Query(None),
+    open_now: Optional[bool] = Query(None),
+    min_price_cents: Optional[int] = Query(None),
+    max_price_cents: Optional[int] = Query(None),
+    category: Optional[str] = Query(None),
     db=Depends(get_db),
 ):
     """Public feed. Optional bounds + filters: open_now, min/max_price_cents, category."""

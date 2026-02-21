@@ -3,12 +3,14 @@ MongoDB connection via Motor (async).
 Used by FastAPI dependency get_db(). Create 2dsphere index on startup in main.py.
 """
 import os
+from typing import Optional
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
 MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "replate")
 
-client: AsyncIOMotorClient | None = None
+client: Optional[AsyncIOMotorClient] = None
 
 
 def get_client() -> AsyncIOMotorClient:

@@ -3,12 +3,14 @@ Geocode address once (on create/update). Nominatim or stub.
 Returns (lng, lat) or None. Never call on map load.
 """
 import os
+from typing import Optional, Tuple
+
 import httpx
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 
-async def geocode_address(address: str) -> tuple[float, float] | None:
+async def geocode_address(address: str) -> Optional[Tuple[float, float]]:
     if not address or not address.strip():
         return None
     try:
