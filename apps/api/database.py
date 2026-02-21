@@ -6,8 +6,17 @@ import os
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
 
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
+# Load .env when running locally (uvicorn does not auto-load it)
+load_dotenv()
+
+# Support both names while standardizing on MONGODB_URI
+MONGODB_URI = (
+    os.environ.get("MONGODB_URI")
+    or os.environ.get("MONGO_URI")
+    or "mongodb://localhost:27017"
+)
 DB_NAME = os.environ.get("DB_NAME", "replate")
 
 client: Optional[AsyncIOMotorClient] = None
