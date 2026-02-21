@@ -1,8 +1,10 @@
 /**
  * Boston map: Leaflet + OSM. Center 42.3601, -71.0589, zoom 13.
  * Calls onBoundsChange when map moves (debounced). Renders markers for listings with location.
+ * Uses a unique key per mount so Leaflet always gets a fresh container (avoids
+ * "Map container is already initialized" under React Strict Mode).
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
@@ -11,6 +13,9 @@ import type { MarketListing } from "../api/market";
 
 const BOSTON_CENTER: [number, number] = [42.3601, -71.0589];
 const DEFAULT_ZOOM = 13;
+
+// Unique id per map instance so React never reuses the MapContainer DOM (fixes Strict Mode).
+let mapInstanceId = 0;
 
 // Fix default marker icons in Leaflet with bundlers
 const icon = L.icon({
@@ -67,13 +72,26 @@ function MapController({
 }
 
 export function BostonMap({ listings, onBoundsChange, debounceMs = 400 }: Props) {
+  const [mapKey, setMapKey] = useState(0);
   const listingsWithLocation = listings.filter(
     (l) => l.location?.coordinates?.length === 2
   );
 
+  useEffect(() => {
+    mapInstanceId += 1;
+    setMapKey(mapInstanceId);
+  }, []);
+
+  if (mapKey === 0) {
+    return (
+      <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200 z-0" />
+    );
+  }
+
   return (
     <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200 z-0">
       <MapContainer
+        key={mapKey}
         center={BOSTON_CENTER}
         zoom={DEFAULT_ZOOM}
         className="h-full w-full"
