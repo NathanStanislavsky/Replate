@@ -34,9 +34,18 @@ def get_db():
 
 
 async def ensure_indexes(db):
-    """Create indexes for map and filters."""
+    """Create indexes for map, filters, food banks, and donations."""
     await db.listings.create_index([("location", "2dsphere")])
     await db.listings.create_index([("status", 1), ("pickup_start", 1), ("pickup_end", 1)])
     await db.listings.create_index([("status", 1), ("price_cents", 1)])
     await db.listings.create_index([("status", 1), ("category", 1)])
     await db.businesses.create_index([("business_code", 1)], unique=True)
+
+    # Food banks
+    await db.food_banks.create_index([("location", "2dsphere")])
+    await db.food_banks.create_index([("active", 1)])
+
+    # Donations
+    await db.donations.create_index([("listing_id", 1)])
+    await db.donations.create_index([("food_bank_id", 1)])
+    await db.donations.create_index([("status", 1)])

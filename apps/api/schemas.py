@@ -65,3 +65,37 @@ class PickupScanResponse(BaseModel):
     ok: bool = True
     already_picked_up: bool = False
     order: Optional[OrderResponse] = None
+
+
+# --- Donations ---
+class DonationPlanRequest(BaseModel):
+    donate_percent: float = Field(..., gt=0.0, le=1.0)
+    max_minutes: Optional[int] = None
+    top_k: Optional[int] = None
+
+
+class AllocationItem(BaseModel):
+    food_bank_id: str
+    name: str
+    address: Optional[str] = None
+    qty: int
+    duration_minutes: Optional[float] = None
+    score: Optional[float] = None
+
+
+class DonationPlanResponse(BaseModel):
+    donation_qty: int
+    remaining_public_qty: int
+    routing_used: bool = True
+    allocations: list[AllocationItem]
+
+
+class TriggerExpiringRequest(BaseModel):
+    minutes_before_end: int = 30
+    max_minutes: Optional[int] = None
+    donate_percent: float = Field(default=1.0, gt=0.0, le=1.0)
+
+
+class TriggerExpiringResponse(BaseModel):
+    processed: int
+    plans: list[dict]

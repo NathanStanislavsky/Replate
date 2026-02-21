@@ -18,8 +18,8 @@ export function BusinessListingsMongo() {
   const [form, setForm] = useState({
     business_name: "",
     title: "",
-    price_cents: 499,
-    qty_available: 10,
+    price_cents: 0,
+    qty_available: 1,
     address: "",
     category: "",
   });
@@ -52,7 +52,7 @@ export function BusinessListingsMongo() {
       });
       setListings(await businessListListings());
       setShowForm(false);
-      setForm({ business_name: "", title: "", price_cents: 499, qty_available: 10, address: "", category: "" });
+      setForm({ business_name: "", title: "", price_cents: 0, qty_available: 1, address: "", category: "" });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create");
     } finally {
@@ -92,15 +92,17 @@ export function BusinessListingsMongo() {
           />
           <input
             type="number"
-            placeholder="Price cents"
-            value={form.price_cents}
+            placeholder="Price (cents, e.g. 500 = $5.00)"
+            value={form.price_cents || ""}
+            min={0}
             onChange={(e) => setForm((f) => ({ ...f, price_cents: Number(e.target.value) }))}
             className="w-full border rounded-lg p-2"
           />
           <input
             type="number"
-            placeholder="Qty"
-            value={form.qty_available}
+            placeholder="Quantity available"
+            value={form.qty_available || ""}
+            min={1}
             onChange={(e) => setForm((f) => ({ ...f, qty_available: Number(e.target.value) }))}
             className="w-full border rounded-lg p-2"
           />
