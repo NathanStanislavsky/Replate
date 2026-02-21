@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
-import { LayoutDashboard, Package, ListOrdered, Leaf } from "lucide-react";
+import { LayoutDashboard, Leaf } from "lucide-react";
 
 export function BusinessLayout() {
   return (
@@ -17,19 +17,7 @@ export function BusinessLayout() {
               to="/business"
               className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 flex items-center gap-2"
             >
-              <LayoutDashboard size={18} /> Dashboard
-            </Link>
-            <Link
-              to="/business/listings"
-              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 flex items-center gap-2"
-            >
-              <Package size={18} /> Listings
-            </Link>
-            <Link
-              to="/business/requests"
-              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 flex items-center gap-2"
-            >
-              <ListOrdered size={18} /> Requests
+              <LayoutDashboard size={18} /> Listings
             </Link>
             <Link
               to="/business/login"

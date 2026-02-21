@@ -48,7 +48,7 @@ Use a single layout for buyer and one for business (e.g. `BuyerLayout`, `Busines
 
 ---
 
-## 3. Backend API (apps/api – Flask)
+## 3. Backend API (apps/api – FastAPI)
 
 Same API serves both sides. Group routes by domain; auth (later) can restrict by role.
 
