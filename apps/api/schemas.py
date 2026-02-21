@@ -11,7 +11,7 @@ class GeoPoint(BaseModel):
 
 # --- Listings ---
 class ListingCreate(BaseModel):
-    business_id: str
+    business_id: Optional[str] = None
     business_name: str
     title: str
     price_cents: int

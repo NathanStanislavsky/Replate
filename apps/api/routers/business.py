@@ -111,6 +111,22 @@ async def business_update_listing(
     return _listing_to_response(listing)
 
 
+@router.delete("/listings/{listing_id}", status_code=204)
+async def business_delete_listing(
+    listing_id: str,
+    business_id: str = Depends(get_business_id),
+    db=Depends(get_db),
+):
+    """Delete listing only if it belongs to this business."""
+    try:
+        oid = ObjectId(listing_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid listing id")
+    result = await db.listings.delete_one({"_id": oid, "business_id": business_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+
 @router.get("/listings/{listing_id}/orders", response_model=list[OrderResponse])
 async def business_listing_orders(
     listing_id: str,
