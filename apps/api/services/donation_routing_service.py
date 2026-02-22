@@ -6,8 +6,6 @@ import os
 import logging
 from typing import Optional
 
-from bson import ObjectId
-
 from services.osrm_service import table_durations
 
 logger = logging.getLogger(__name__)
@@ -122,10 +120,11 @@ def allocate_units(
     capacities: Optional[dict] = None,
 ) -> list[dict]:
     """
-    Allocate donation_qty units across scored candidates.
+    Allocate donation_qty units across scored candidates in proportion to score.
 
-    MVP: all units go to the top candidate; if capacity_daily is set and fills,
-    spill remainder to next best.
+    Higher-need (and/or closer) banks get a larger share instead of winner-take-all.
+    Uses largest-remainder for integer rounding so sum(allocations) == donation_qty.
+    Respects capacity_daily / capacities when set (caps allocation, spill goes to others).
 
     Args:
         donation_qty: total units to allocate
@@ -135,36 +134,72 @@ def allocate_units(
     Returns:
         List of allocation dicts: {food_bank_id, name, qty, duration_minutes, score}
     """
-    allocations = []
-    remaining = donation_qty
+    if not scored_candidates or donation_qty <= 0:
+        return []
 
-    for bank in scored_candidates:
-        if remaining <= 0:
+    total_score = sum(b.get("score") or 0 for b in scored_candidates)
+    if total_score <= 0:
+        total_score = len(scored_candidates)
+        score_per_bank = [1.0] * len(scored_candidates)
+    else:
+        score_per_bank = [b.get("score") or 0 for b in scored_candidates]
+
+    # Proportional shares (floats)
+    raw_shares = [(s / total_score) * donation_qty for s in score_per_bank]
+    floors = [int(math.floor(s)) for s in raw_shares]
+    remainder_units = donation_qty - sum(floors)
+
+    # Largest-remainder: give one extra unit to banks with largest fractional part
+    fractional_parts = [(i, raw_shares[i] - floors[i]) for i in range(len(floors))]
+    fractional_parts.sort(key=lambda x: -x[1])
+    for i in range(remainder_units):
+        idx = fractional_parts[i][0]
+        floors[idx] += 1
+
+    # Apply capacity caps and build (index -> alloc) then redistribute spill
+    allocs = list(floors)
+    spill = 0
+    for i, bank in enumerate(scored_candidates):
+        fid = bank["_id"]
+        cap = None
+        if capacities and fid in capacities:
+            cap = capacities[fid]
+        elif bank.get("capacity_daily") is not None:
+            cap = bank["capacity_daily"]
+        if cap is not None and allocs[i] > cap:
+            spill += allocs[i] - cap
+            allocs[i] = cap
+
+    # Redistribute spill by score to banks that haven't hit cap
+    while spill > 0:
+        gave = 0
+        for i in sorted(range(len(scored_candidates)), key=lambda j: -(score_per_bank[j] or 0)):
+            if spill <= 0:
+                break
+            fid = scored_candidates[i]["_id"]
+            cap = None
+            if capacities and fid in capacities:
+                cap = capacities[fid]
+            elif scored_candidates[i].get("capacity_daily") is not None:
+                cap = scored_candidates[i]["capacity_daily"]
+            if cap is None or allocs[i] < cap:
+                allocs[i] += 1
+                spill -= 1
+                gave += 1
+        if gave == 0:
             break
 
-        fid = bank["_id"]
-        capacity = None
-        if capacities and fid in capacities:
-            capacity = capacities[fid]
-        elif bank.get("capacity_daily") is not None:
-            capacity = bank["capacity_daily"]
-
-        if capacity is not None:
-            alloc = min(remaining, capacity)
-        else:
-            alloc = remaining
-
-        if alloc <= 0:
+    allocations = []
+    for i, bank in enumerate(scored_candidates):
+        if allocs[i] <= 0:
             continue
-
         allocations.append({
-            "food_bank_id": fid,
+            "food_bank_id": bank["_id"],
             "name": bank.get("name", "Unknown"),
             "address": bank.get("address", ""),
-            "qty": alloc,
+            "phone": bank.get("phone", ""),
+            "qty": allocs[i],
             "duration_minutes": bank.get("duration_minutes"),
             "score": bank.get("score"),
         })
-        remaining -= alloc
-
     return allocations

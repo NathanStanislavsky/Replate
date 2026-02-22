@@ -1,6 +1,6 @@
 """
 FastAPI app: MongoDB (Motor), 2dsphere index on listings.location, CORS.
-Run: uvicorn main:app --reload --port 5001
+Run: uvicorn main:app --reload --port 8000
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI

@@ -112,19 +112,21 @@ async def create_donation_plan(
     if donation_docs:
         await db.donations.insert_many(donation_docs)
 
-    # Update listing
+    remaining_public_qty = qty_available - donation_qty
+
+    # Set listing qty_available to remainder so marketplace shows correct reservable amount
+    update_payload = {
+        "donation_mode": "planned",
+        "donation_plan": allocations,
+        "donate_percent": body.donate_percent,
+        "qty_available": remaining_public_qty,
+    }
+    if remaining_public_qty <= 0:
+        update_payload["status"] = "sold_out"
     await db.listings.update_one(
         {"_id": oid},
-        {
-            "$set": {
-                "donation_mode": "planned",
-                "donation_plan": allocations,
-                "donate_percent": body.donate_percent,
-            }
-        },
+        {"$set": update_payload},
     )
-
-    remaining_public_qty = qty_available - donation_qty
 
     return DonationPlanResponse(
         donation_qty=donation_qty,
@@ -213,15 +215,18 @@ async def trigger_expiring_donations(
         if donation_docs:
             await db.donations.insert_many(donation_docs)
 
+        remaining_public_qty = qty_available - donation_qty
+        update_payload = {
+            "donation_mode": "pending",
+            "donation_plan": allocations,
+            "donate_percent": body.donate_percent,
+            "qty_available": remaining_public_qty,
+        }
+        if remaining_public_qty <= 0:
+            update_payload["status"] = "sold_out"
         await db.listings.update_one(
             {"_id": listing["_id"]},
-            {
-                "$set": {
-                    "donation_mode": "pending",
-                    "donation_plan": allocations,
-                    "donate_percent": body.donate_percent,
-                }
-            },
+            {"$set": update_payload},
         )
 
         plans.append({

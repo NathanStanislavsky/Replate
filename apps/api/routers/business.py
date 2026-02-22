@@ -2,15 +2,34 @@
 Business side: listings CRUD and orders view. Require X-Business-Id header.
 Lookup business_id from business_code via GET /business/lookup?business_code=.
 """
+import math
+import os
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from bson import ObjectId
 from typing import Optional
 from pydantic import BaseModel
 
 from database import get_db
-from schemas import ListingCreate, ListingResponse, OrderResponse
+from schemas import (
+    ListingCreate,
+    ListingResponse,
+    OrderResponse,
+    BusinessCreateListingResponse,
+    AllocationItem,
+)
 from routers.listings import _listing_to_response
 from routers.orders import _order_to_response
+from services.geocode import geocode_address
+from services.donation_routing_service import (
+    pick_candidates,
+    score_candidates,
+    allocate_units,
+)
+
+OSRM_MAX_MINUTES = float(os.environ.get("OSRM_MAX_MINUTES", 20))
+OSRM_TOP_K = int(os.environ.get("OSRM_TOP_K", 5))
 
 router = APIRouter(prefix="/api/business", tags=["business"])
 
@@ -53,16 +72,13 @@ async def business_list_listings(
     return out
 
 
-@router.post("/listings", response_model=ListingResponse)
+@router.post("/listings", response_model=BusinessCreateListingResponse)
 async def business_create_listing(
     body: ListingCreate,
     business_id: str = Depends(get_business_id),
     db=Depends(get_db),
 ):
-    """Create listing; business_id from header overrides body."""
-    from datetime import datetime
-    from services.geocode import geocode_address
-
+    """Create listing; if donate_percent set, run allocation and set qty_available to remainder. Returns listing + allocations."""
     doc = {
         "business_id": business_id,
         "business_name": body.business_name,
@@ -82,9 +98,84 @@ async def business_create_listing(
         coords = await geocode_address(body.address)
         if coords:
             doc["location"] = {"type": "Point", "coordinates": list(coords)}
+
+    if body.donate_percent is not None and body.donate_percent > 0:
+        if not doc.get("location") or doc["location"].get("type") != "Point":
+            raise HTTPException(
+                status_code=422,
+                detail="Address (or location) is required when donate_percent > 0 so we can find nearby food banks",
+            )
+
     result = await db.listings.insert_one(doc)
     doc["_id"] = result.inserted_id
-    return _listing_to_response(doc)
+    listing_id_str = str(doc["_id"])
+    allocations: list[dict] = []
+
+    if body.donate_percent is not None and body.donate_percent > 0 and doc.get("location"):
+        total_qty = doc["qty_available"]
+        donation_qty = math.floor(total_qty * body.donate_percent)
+        if donation_qty >= 1:
+            candidates, routing_used = await pick_candidates(
+                doc["location"], db, top_k=OSRM_TOP_K, max_minutes=OSRM_MAX_MINUTES
+            )
+            if not candidates and routing_used:
+                await db.listings.delete_one({"_id": doc["_id"]})
+                raise HTTPException(
+                    status_code=503,
+                    detail="No reachable food banks found within the time constraint. Try again or create without donation %.",
+                )
+            if not candidates:
+                await db.listings.delete_one({"_id": doc["_id"]})
+                raise HTTPException(
+                    status_code=404,
+                    detail="No active food banks found near this address",
+                )
+            scored = score_candidates(candidates)
+            allocations = allocate_units(donation_qty, scored)
+            if not allocations:
+                await db.listings.delete_one({"_id": doc["_id"]})
+                raise HTTPException(status_code=422, detail="Could not allocate units to any food bank")
+
+            now = datetime.utcnow().isoformat() + "Z"
+            donation_docs = [
+                {
+                    "listing_id": listing_id_str,
+                    "food_bank_id": a["food_bank_id"],
+                    "qty": a["qty"],
+                    "status": "planned",
+                    "created_at": now,
+                }
+                for a in allocations
+            ]
+            await db.donations.insert_many(donation_docs)
+            remaining = total_qty - donation_qty
+            update_payload = {
+                "donation_mode": "planned",
+                "donation_plan": allocations,
+                "donate_percent": body.donate_percent,
+                "qty_available": remaining,
+            }
+            if remaining <= 0:
+                update_payload["status"] = "sold_out"
+            await db.listings.update_one({"_id": doc["_id"]}, {"$set": update_payload})
+            doc.update(update_payload)
+
+    allocation_items = [
+        AllocationItem(
+            food_bank_id=str(a["food_bank_id"]),
+            name=a["name"],
+            address=a.get("address"),
+            phone=a.get("phone"),
+            qty=a["qty"],
+            duration_minutes=a.get("duration_minutes"),
+            score=a.get("score"),
+        )
+        for a in allocations
+    ]
+    return BusinessCreateListingResponse(
+        listing=_listing_to_response(doc),
+        allocations=allocation_items,
+    )
 
 
 @router.patch("/listings/{listing_id}", response_model=ListingResponse)

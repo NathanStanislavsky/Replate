@@ -16,6 +16,7 @@ class ListingCreate(BaseModel):
     title: str
     price_cents: int
     qty_available: int
+    donate_percent: Optional[float] = Field(None, ge=0.0, le=1.0)  # 0-1; if set, run allocation and set qty_available to remainder
     pickup_start: Optional[str] = None
     pickup_end: Optional[str] = None
     address: Optional[str] = None
@@ -37,6 +38,8 @@ class ListingResponse(BaseModel):
     location: Optional[GeoPoint] = None
     category: Optional[str] = None
     created_at: Optional[str] = None
+    donate_percent: Optional[float] = None
+    donation_plan: Optional[list] = None  # list of AllocationItem-like dicts
 
 # --- Orders ---
 class ReserveBody(BaseModel):
@@ -78,6 +81,7 @@ class AllocationItem(BaseModel):
     food_bank_id: str
     name: str
     address: Optional[str] = None
+    phone: Optional[str] = None
     qty: int
     duration_minutes: Optional[float] = None
     score: Optional[float] = None
@@ -88,6 +92,12 @@ class DonationPlanResponse(BaseModel):
     remaining_public_qty: int
     routing_used: bool = True
     allocations: list[AllocationItem]
+
+
+class BusinessCreateListingResponse(BaseModel):
+    """Create listing response: listing plus allocations when donate_percent was used."""
+    listing: ListingResponse
+    allocations: list[AllocationItem] = []
 
 
 class TriggerExpiringRequest(BaseModel):
