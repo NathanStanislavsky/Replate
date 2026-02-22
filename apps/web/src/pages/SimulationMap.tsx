@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet"
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getSimulation } from "../api/simulation";
-import type { SimulationData, SimListing, SimFoodBank } from "../api/simulation";
+import type { SimulationData, SimFoodBank } from "../api/simulation";
 
 const BOSTON_CENTER: [number, number] = [42.3601, -71.0589];
 
@@ -28,11 +28,7 @@ const foodBankIcon = L.divIcon({
   popupAnchor: [0, -10],
 });
 
-let mapKey = 0;
-
 function SimMapView({ data }: { data: SimulationData }) {
-  
-
   // Build a lookup of food bank id → food bank
   const fbById = new Map<string, SimFoodBank>();
   for (const fb of data.food_banks) {
@@ -60,7 +56,6 @@ function SimMapView({ data }: { data: SimulationData }) {
 
   return (
     <MapContainer
-      key={key}
       center={BOSTON_CENTER}
       zoom={13}
       className="h-full w-full"
