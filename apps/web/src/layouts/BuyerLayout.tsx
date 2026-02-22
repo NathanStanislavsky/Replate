@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
-import { Leaf, ListOrdered, Map } from "lucide-react";
+import { Leaf, ListOrdered, Map, GitBranch } from "lucide-react";
 
 export function BuyerLayout() {
   return (
@@ -26,6 +26,12 @@ export function BuyerLayout() {
               <ListOrdered size={18} /> My orders
             </Link>
             <Link
+              to="/demo"
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-800 flex items-center gap-2"
+            >
+              <GitBranch size={18} /> Demo
+            </Link>
+            <Link
               to="/business"
               className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-800"
             >
@@ -34,7 +40,7 @@ export function BuyerLayout() {
           </nav>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto p-4 sm:p-6">
+      <main className="w-full">
         <Outlet />
       </main>
     </div>

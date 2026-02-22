@@ -7,8 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import get_db, ensure_indexes
-from routers import listings, orders, business
-from routers import donations
+from routers import listings, orders, business, donations, simulation
 
 
 @asynccontextmanager
@@ -32,6 +31,7 @@ app.include_router(listings.router)
 app.include_router(orders.router)
 app.include_router(business.router)
 app.include_router(donations.router)
+app.include_router(simulation.router)
 
 
 @app.get("/")

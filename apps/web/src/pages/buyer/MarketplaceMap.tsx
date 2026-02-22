@@ -1,6 +1,6 @@
 /**
- * Marketplace with Boston map. Fetches listings from FastAPI /api/market (bounds + filters).
- * On map move: debounced refetch. Filters: open now, price range, category.
+ * Marketplace — split view: map (left) + listing panel (right).
+ * Floating filter bar overlaid on the map.
  */
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
@@ -9,10 +9,8 @@ import { getMarketWithBounds } from "../../api/market";
 import type { MarketListing, Bounds, MarketFilters } from "../../api/market";
 
 const BOSTON_DEFAULT_BOUNDS: Bounds = {
-  sw_lat: 42.2279,
-  sw_lng: -71.1912,
-  ne_lat: 42.3996,
-  ne_lng: -70.986,
+  sw_lat: 42.2279, sw_lng: -71.1912,
+  ne_lat: 42.3996, ne_lng: -70.986,
 };
 
 export function MarketplaceMap() {
@@ -21,16 +19,15 @@ export function MarketplaceMap() {
   const [error, setError] = useState<string | null>(null);
   const [bounds, setBounds] = useState<Bounds | null>(BOSTON_DEFAULT_BOUNDS);
   const [openNow, setOpenNow] = useState(false);
-  const [minPrice, setMinPrice] = useState<string>("");
-  const [maxPrice, setMaxPrice] = useState<string>("");
-  const [category, setCategory] = useState<string>("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [category, setCategory] = useState("");
 
   const fetchListings = useCallback(async (b: Bounds | null, f?: MarketFilters) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getMarketWithBounds(b, f);
-      setListings(data);
+      setListings(await getMarketWithBounds(b, f));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
       setListings([]);
@@ -48,103 +45,85 @@ export function MarketplaceMap() {
     fetchListings(bounds, f);
   }, [bounds?.sw_lat, bounds?.sw_lng, bounds?.ne_lat, bounds?.ne_lng, openNow, minPrice, maxPrice, category, fetchListings]);
 
-  const handleBoundsChange = useCallback((b: Bounds) => {
-    setBounds(b);
-  }, []);
+  const handleBoundsChange = useCallback((b: Bounds) => setBounds(b), []);
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Surplus near you (Boston)
-        </h1>
-        <p className="text-gray-600 mb-4">
-          Move the map to load listings in view. Click a marker to see details and reserve.
-        </p>
-        <div className="flex flex-wrap gap-4 items-center p-3 bg-white rounded-xl border border-gray-100">
-          <label className="flex items-center gap-2 cursor-pointer">
+    // Full-height split: map + side panel
+    <div className="flex" style={{ height: "calc(100vh - 64px)" }}>
+
+      {/* ── Map pane ── */}
+      <div className="relative flex-1 min-w-0">
+        <BostonMap listings={listings} onBoundsChange={handleBoundsChange} debounceMs={400} />
+
+        {/* Floating filter bar */}
+        <div
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 bg-white/95 backdrop-blur-sm shadow-md rounded-full px-4 py-2"
+          style={{ maxWidth: "90%" }}
+        >
+          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-600 whitespace-nowrap">
             <input
               type="checkbox"
               checked={openNow}
               onChange={(e) => setOpenNow(e.target.checked)}
+              className="accent-emerald-600"
             />
-            <span className="text-sm font-medium">Open now</span>
+            Open now
           </label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Min $</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              className="w-20 border border-gray-300 rounded p-1.5 text-sm"
-              placeholder="0"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Max $</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              className="w-20 border border-gray-300 rounded p-1.5 text-sm"
-              placeholder="—"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Category</span>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-32 border border-gray-300 rounded p-1.5 text-sm"
-              placeholder="e.g. bakery"
-            />
-          </div>
+          <div className="w-px h-4 bg-gray-200" />
+          <input
+            type="number" step="0.01" min="0"
+            value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
+            className="w-20 text-xs border-0 outline-none bg-transparent text-gray-700 placeholder-gray-400"
+            placeholder="Min $"
+          />
+          <span className="text-gray-300 text-xs">—</span>
+          <input
+            type="number" step="0.01" min="0"
+            value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
+            className="w-20 text-xs border-0 outline-none bg-transparent text-gray-700 placeholder-gray-400"
+            placeholder="Max $"
+          />
+          <div className="w-px h-4 bg-gray-200" />
+          <input
+            type="text"
+            value={category} onChange={(e) => setCategory(e.target.value)}
+            className="w-24 text-xs border-0 outline-none bg-transparent text-gray-700 placeholder-gray-400"
+            placeholder="Category"
+          />
+          {loading && <span className="text-xs text-gray-400 ml-1">•••</span>}
         </div>
       </div>
 
-      <div className="mb-6">
-        <BostonMap
-          listings={listings}
-          onBoundsChange={handleBoundsChange}
-          debounceMs={400}
-        />
-      </div>
+      {/* ── Side panel ── */}
+      <div className="w-80 flex-shrink-0 bg-white border-l border-gray-100 overflow-y-auto">
+        <div className="p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+          <p className="text-sm font-semibold text-gray-800">
+            {loading ? "Loading…" : `${listings.length} listing${listings.length !== 1 ? "s" : ""} nearby`}
+          </p>
+          {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+        </div>
 
-      {loading && listings.length === 0 && (
-        <p className="text-gray-500">Loading listings…</p>
-      )}
-      {error && <p className="text-red-600">{error}</p>}
-
-      <div className="mt-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-3">In this area</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="divide-y divide-gray-50">
           {listings.length === 0 && !loading && (
-            <p className="text-gray-500 col-span-full">
-              No listings in this view. Pan the map or add listings as a business.
+            <p className="text-sm text-gray-400 p-6 text-center">
+              No listings here. Pan the map or add one as a business.
             </p>
           )}
           {listings.map((listing) => (
-            <div
+            <Link
               key={listing.id}
-              className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"
+              to={`/listing/m/${listing.id}`}
+              className="flex flex-col gap-1 p-4 hover:bg-gray-50 transition-colors"
             >
-              <h3 className="font-bold text-gray-900">{listing.title}</h3>
-              <p className="text-sm text-gray-600">{listing.business_name}</p>
-              <p className="text-emerald-700 font-medium mt-1">
-                ${(listing.price_cents / 100).toFixed(2)} · {listing.qty_available} left
-              </p>
-              <Link
-                to={`/listing/m/${listing.id}`}
-                className="inline-block mt-2 text-sm font-medium text-emerald-600 hover:underline"
-              >
-                View & reserve →
-              </Link>
-            </div>
+              <p className="text-sm font-semibold text-gray-900 truncate">{listing.title}</p>
+              <p className="text-xs text-gray-400 truncate">{listing.business_name}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-sm font-bold text-emerald-700">
+                  ${(listing.price_cents / 100).toFixed(2)}
+                </span>
+                <span className="text-xs text-gray-400">{listing.qty_available} left</span>
+              </div>
+            </Link>
           ))}
         </div>
       </div>

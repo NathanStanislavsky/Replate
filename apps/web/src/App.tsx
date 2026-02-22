@@ -7,6 +7,7 @@ import { MyOrders } from "./pages/buyer/MyOrders";
 import { BusinessLogin } from "./pages/business/BusinessLogin";
 import { BusinessListingsMongo } from "./pages/business/BusinessListingsMongo";
 import { BusinessListingOrders } from "./pages/business/BusinessListingOrders";
+import { SimulationMap } from "./pages/SimulationMap";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/listing/m/:id" element={<MarketListingDetail />} />
         <Route path="/orders" element={<MyOrders />} />
         <Route path="/listing/:id" element={<Navigate to="/map" replace />} />
+        <Route path="/demo" element={<SimulationMap />} />
       </Route>
       <Route path="/business" element={<BusinessLayout />}>
         <Route index element={<BusinessListingsMongo />} />
