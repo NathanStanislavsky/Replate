@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "./baseUrl";
+
 export interface AllocationItem {
   food_bank_id: string;
   name: string;
@@ -32,7 +34,7 @@ export interface SimulationData {
 }
 
 export async function getSimulation(): Promise<SimulationData> {
-  const res = await fetch("/api/simulation");
+  const res = await fetch(`${getApiBaseUrl()}/simulation`);
   if (!res.ok) throw new Error(`GET /api/simulation → ${res.status}`);
   return res.json();
 }

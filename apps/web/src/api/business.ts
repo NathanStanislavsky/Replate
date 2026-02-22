@@ -2,11 +2,9 @@
  * Business API (FastAPI): lookup by code, listings CRUD, orders. Uses X-Business-Id header.
  */
 import axios from "axios";
+import { getApiBaseUrl } from "./baseUrl";
 
-const baseURL =
-  import.meta.env.VITE_API_URL != null
-    ? String(import.meta.env.VITE_API_URL).replace(/\/api\/?$/, "") + "/api"
-    : "/api";
+const baseURL = getApiBaseUrl();
 
 export const businessApi = axios.create({
   baseURL,

@@ -3,11 +3,9 @@
  * Types match TGTG V1 Boston (price_cents, GeoJSON location).
  */
 import axios from "axios";
+import { getApiBaseUrl } from "./baseUrl";
 
-const baseURL =
-  import.meta.env.VITE_API_URL != null
-    ? String(import.meta.env.VITE_API_URL).replace(/\/api\/?$/, "") + "/api"
-    : "/api";
+const baseURL = getApiBaseUrl();
 
 export const marketApi = axios.create({
   baseURL,
