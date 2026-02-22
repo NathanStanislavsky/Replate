@@ -168,6 +168,28 @@ npm run lint
 npm run check-types
 ```
 
+## Deploy (Vercel)
+
+This repo deploys best as two Vercel projects:
+
+- Backend project rooted at `apps/api`
+- Frontend project rooted at `apps/web`
+
+### Backend (`apps/api`)
+
+- `apps/api/vercel.json` routes all requests to FastAPI (`api/index.py` -> `main.app`).
+- Set env vars in Vercel:
+  - `MONGODB_URI`
+  - `DB_NAME`
+  - `CORS_ORIGINS` (comma-separated)
+  - optional `CORS_ORIGIN_REGEX` (for preview domains)
+  - optional OSRM + Gemini vars from `.env.example`
+
+### Frontend (`apps/web`)
+
+- `apps/web/vercel.json` forces Vite build output (`dist`) and SPA rewrites.
+- Set `VITE_API_URL` to your backend URL, e.g. `https://your-api.vercel.app`
+
 ## Troubleshooting
 
 - White screen / map not loading:

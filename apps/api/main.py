@@ -2,6 +2,7 @@
 FastAPI app: MongoDB (Motor), 2dsphere index on listings.location, CORS.
 Run: uvicorn main:app --reload --port 8000
 """
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,9 +21,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Replate API", lifespan=lifespan)
+default_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", ",".join(default_origins)).split(",")
+    if origin.strip()
+]
+cors_origin_regex = os.environ.get("CORS_ORIGIN_REGEX")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
