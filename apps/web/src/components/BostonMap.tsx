@@ -35,9 +35,21 @@ type Props = {
   listings: MarketListing[];
   onBoundsChange: (bounds: Bounds) => void;
   debounceMs?: number;
+  focusBounds?: Bounds | null;
+  focusBoundsVersion?: number;
 };
 
-function MapController({ onBoundsChange, debounceMs = 400 }: { onBoundsChange: Props["onBoundsChange"]; debounceMs: number }) {
+function MapController({
+  onBoundsChange,
+  debounceMs = 400,
+  focusBounds,
+  focusBoundsVersion,
+}: {
+  onBoundsChange: Props["onBoundsChange"];
+  debounceMs: number;
+  focusBounds?: Bounds | null;
+  focusBoundsVersion?: number;
+}) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const map = useMapEvents({
     moveend() {
@@ -52,10 +64,28 @@ function MapController({ onBoundsChange, debounceMs = 400 }: { onBoundsChange: P
     const b = map.getBounds();
     onBoundsChange({ sw_lat: b.getSouthWest().lat, sw_lng: b.getSouthWest().lng, ne_lat: b.getNorthEast().lat, ne_lng: b.getNorthEast().lng });
   }, []);
+
+  useEffect(() => {
+    if (!focusBounds) return;
+    map.fitBounds(
+      [
+        [focusBounds.sw_lat, focusBounds.sw_lng],
+        [focusBounds.ne_lat, focusBounds.ne_lng],
+      ],
+      { padding: [24, 24] },
+    );
+  }, [map, focusBoundsVersion]);
+
   return null;
 }
 
-export function BostonMap({ listings, onBoundsChange, debounceMs = 400 }: Props) {
+export function BostonMap({
+  listings,
+  onBoundsChange,
+  debounceMs = 400,
+  focusBounds,
+  focusBoundsVersion,
+}: Props) {
   const [mapKey, setMapKey] = useState(0);
   const listingsWithLocation = listings.filter((l) => l.location?.coordinates?.length === 2);
 
@@ -82,7 +112,12 @@ export function BostonMap({ listings, onBoundsChange, debounceMs = 400 }: Props)
         subdomains="abcd"
         maxZoom={20}
       />
-      <MapController onBoundsChange={onBoundsChange} debounceMs={debounceMs} />
+      <MapController
+        onBoundsChange={onBoundsChange}
+        debounceMs={debounceMs}
+        focusBounds={focusBounds}
+        focusBoundsVersion={focusBoundsVersion}
+      />
       {listingsWithLocation.map((listing) => (
         <Marker
           key={listing.id}

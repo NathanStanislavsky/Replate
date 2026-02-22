@@ -3,15 +3,29 @@ Listings: POST (create), GET /market with optional bounds and filters (open_now,
 """
 from datetime import datetime
 from typing import Optional
+import json
+import os
+import re
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
+import httpx
 
 from database import get_db
-from schemas import ListingCreate, ListingResponse, GeoPoint
+from schemas import (
+    ListingCreate,
+    ListingResponse,
+    GeoPoint,
+    MarketIntentRequest,
+    MarketIntentResponse,
+    BoundsPayload,
+)
 from services.geocode import geocode_address
 
 router = APIRouter(prefix="/api", tags=["listings"])
+
+_GEMINI_MODEL = "gemini-1.5-flash"
+_GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{_GEMINI_MODEL}:generateContent"
 
 
 def _listing_to_response(doc: dict) -> dict:
@@ -20,6 +34,74 @@ def _listing_to_response(doc: dict) -> dict:
     if "location" in doc and doc["location"]:
         doc["location"] = {"type": "Point", "coordinates": doc["location"]["coordinates"]}
     return doc
+
+
+def _extract_json_object(text: str) -> dict:
+    """Accept either raw JSON or fenced JSON and return a dict."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    try:
+        return json.loads(stripped)
+    except Exception:
+        pass
+
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start >= 0 and end > start:
+        return json.loads(stripped[start:end + 1])
+    raise ValueError("No valid JSON object in model output")
+
+
+def _normalize_market_intent(payload: dict) -> MarketIntentResponse:
+    out = MarketIntentResponse()
+
+    category = payload.get("category")
+    if isinstance(category, str) and category.strip():
+        out.category = category.strip().lower()
+
+    min_price_cents = payload.get("min_price_cents")
+    if isinstance(min_price_cents, (int, float)):
+        out.min_price_cents = max(int(min_price_cents), 0)
+
+    max_price_cents = payload.get("max_price_cents")
+    if isinstance(max_price_cents, (int, float)):
+        out.max_price_cents = max(int(max_price_cents), 0)
+
+    if (
+        out.min_price_cents is not None
+        and out.max_price_cents is not None
+        and out.min_price_cents > out.max_price_cents
+    ):
+        out.min_price_cents, out.max_price_cents = out.max_price_cents, out.min_price_cents
+
+    if isinstance(payload.get("open_now"), bool):
+        out.open_now = payload.get("open_now")
+
+    if isinstance(payload.get("near_me"), bool):
+        out.near_me = payload.get("near_me")
+
+    radius_km = payload.get("radius_km")
+    if isinstance(radius_km, (int, float)):
+        out.radius_km = float(min(max(radius_km, 0.5), 20.0))
+
+    bounds = payload.get("bounds")
+    if isinstance(bounds, dict):
+        keys = ("sw_lat", "sw_lng", "ne_lat", "ne_lng")
+        if all(isinstance(bounds.get(k), (int, float)) for k in keys):
+            out.bounds = BoundsPayload(
+                sw_lat=float(bounds["sw_lat"]),
+                sw_lng=float(bounds["sw_lng"]),
+                ne_lat=float(bounds["ne_lat"]),
+                ne_lng=float(bounds["ne_lng"]),
+            )
+
+    note = payload.get("note")
+    if isinstance(note, str) and note.strip():
+        out.note = note.strip()[:200]
+
+    return out
 
 
 @router.get("/market", response_model=list[ListingResponse])
@@ -97,6 +179,79 @@ async def create_listing(body: ListingCreate, db=Depends(get_db)):
     result = await db.listings.insert_one(doc)
     doc["_id"] = result.inserted_id
     return _listing_to_response(doc)
+
+
+@router.post("/market/intent", response_model=MarketIntentResponse)
+async def parse_market_intent(body: MarketIntentRequest):
+    query = body.query.strip()
+    if not query:
+        return MarketIntentResponse(note="Empty query")
+
+    gemini_key = os.environ.get("GEMENI_KEY") or os.environ.get("GEMINI_KEY")
+    if not gemini_key:
+        raise HTTPException(status_code=503, detail="Missing GEMENI_KEY")
+
+    prompt = f"""
+You convert buyer search text into filters for a food marketplace.
+Return ONLY valid JSON with this schema:
+{{
+  "category": string|null,
+  "min_price_cents": number|null,
+  "max_price_cents": number|null,
+  "open_now": boolean|null,
+  "near_me": boolean|null,
+  "radius_km": number|null,
+  "bounds": {{
+    "sw_lat": number,
+    "sw_lng": number,
+    "ne_lat": number,
+    "ne_lng": number
+  }} | null,
+  "note": string|null
+}}
+
+Rules:
+- If query says "under $X", set max_price_cents.
+- If query says "over $X" or "at least $X", set min_price_cents.
+- If query says "cheap" with no explicit max, use max_price_cents=1000.
+- If query says "open now", set open_now=true.
+- If query says "near me"/"nearby"/"around me", set near_me=true and radius_km if stated.
+- If query mentions a Boston area neighborhood (Fenway, Back Bay, Cambridge, Allston, etc),
+  return approximate map bounds in "bounds".
+- Keep null for fields not specified.
+
+Query: {query}
+"""
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            resp = await client.post(
+                _GEMINI_URL,
+                params={"key": gemini_key},
+                json=payload,
+            )
+        resp.raise_for_status()
+        data = resp.json()
+        text = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        parsed = _extract_json_object(text)
+        return _normalize_market_intent(parsed)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Intent parse failed: {str(exc)}")
 
 
 @router.get("/listings/{listing_id}", response_model=ListingResponse)

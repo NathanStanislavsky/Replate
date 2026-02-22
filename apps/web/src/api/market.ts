@@ -60,6 +60,17 @@ export type MarketFilters = {
   category?: string;
 };
 
+export type MarketIntent = {
+  category?: string | null;
+  min_price_cents?: number | null;
+  max_price_cents?: number | null;
+  open_now?: boolean | null;
+  near_me?: boolean | null;
+  radius_km?: number | null;
+  bounds?: Bounds | null;
+  note?: string | null;
+};
+
 export async function getMarketWithBounds(
   bounds: Bounds | null,
   filters?: MarketFilters
@@ -78,6 +89,11 @@ export async function getMarketWithBounds(
   if (filters?.max_price_cents != null) params.max_price_cents = filters.max_price_cents;
   if (filters?.category) params.category = filters.category;
   const { data } = await marketApi.get<MarketListing[]>("/market", { params });
+  return data;
+}
+
+export async function parseMarketIntent(query: string): Promise<MarketIntent> {
+  const { data } = await marketApi.post<MarketIntent>("/market/intent", { query });
   return data;
 }
 

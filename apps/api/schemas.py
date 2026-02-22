@@ -109,3 +109,26 @@ class TriggerExpiringRequest(BaseModel):
 class TriggerExpiringResponse(BaseModel):
     processed: int
     plans: list[dict]
+
+
+# --- Market intent ---
+class BoundsPayload(BaseModel):
+    sw_lat: float
+    sw_lng: float
+    ne_lat: float
+    ne_lng: float
+
+
+class MarketIntentRequest(BaseModel):
+    query: str
+
+
+class MarketIntentResponse(BaseModel):
+    category: Optional[str] = None
+    min_price_cents: Optional[int] = None
+    max_price_cents: Optional[int] = None
+    open_now: Optional[bool] = None
+    bounds: Optional[BoundsPayload] = None
+    near_me: Optional[bool] = None
+    radius_km: Optional[float] = None
+    note: Optional[str] = None
